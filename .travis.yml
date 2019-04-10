@@ -1,0 +1,18 @@
+sudo: false
+dist: trusty
+language: cpp
+os:
+  - linux
+  - osx
+
+matrix:
+exclude:
+- os : linux
+  compiler: clang
+- os : osx
+  compiler: gcc
+
+script:
+  - ${CXX} --version
+  - ${CXX} posix_write.cpp -o posix_write
+  - ./posix_write
