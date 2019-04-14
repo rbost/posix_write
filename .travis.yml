@@ -14,5 +14,5 @@ exclude:
 
 script:
   - ${CXX} --version
-  - ${CXX} posix_write.cpp -o posix_write
+  - ${CXX} posix_write.cpp -std=c++11 -o posix_write
   - ./posix_write
