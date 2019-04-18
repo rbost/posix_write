@@ -10,24 +10,23 @@ bool write_wrapper(int fd, const void *buf, size_t nbyte) {
   constexpr size_t LIMIT_2GB = 1UL << 31;
   constexpr size_t LIMIT_1GB = 1UL << 30;
 
-  if (nbyte < LIMIT_2GB) {
-    ssize_t ret = write(fd, buf, nbyte);
-    return ret == nbyte;
-  }
+  const char *src = reinterpret_cast<const char *>(buf);
+  size_t left = nbyte;
 
-  size_t written_bytes = 0;
-  for (; (written_bytes + LIMIT_1GB) <= nbyte; written_bytes += LIMIT_1GB) {
-    ssize_t ret = write(fd, buf, LIMIT_1GB);
-
-    if (ret != LIMIT_1GB) {
+  while (left != 0) {
+    size_t bytes_to_write = left;
+    if (bytes_to_write >= LIMIT_2GB) {
+      bytes_to_write = LIMIT_1GB;
+    }
+    ssize_t done = write(fd, src, bytes_to_write);
+    if (done < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
       return false;
     }
-  }
-  size_t remaining = nbyte - written_bytes;
-  if (remaining > 0) {
-    ssize_t ret = write(fd, buf, remaining);
-
-    return ret == remaining;
+    left -= done;
+    src += done;
   }
   return true;
 }
@@ -36,25 +35,27 @@ bool pwrite_wrapper(int fd, const void *buf, size_t nbyte, off_t offset) {
   constexpr size_t LIMIT_2GB = 1UL << 31;
   constexpr size_t LIMIT_1GB = 1UL << 30;
 
-  if (nbyte < LIMIT_2GB) {
-    ssize_t ret = pwrite(fd, buf, nbyte, offset);
-    return ret == nbyte;
-  }
+  const char *src = reinterpret_cast<const char *>(buf);
+  size_t left = nbyte;
 
-  size_t written_bytes = 0;
-  for (; (written_bytes + LIMIT_1GB) <= nbyte; written_bytes += LIMIT_1GB) {
-    ssize_t ret = pwrite(fd, buf, LIMIT_1GB, offset + written_bytes);
+  while (left != 0) {
+    size_t bytes_to_write = left;
+    if (bytes_to_write >= LIMIT_2GB) {
+      bytes_to_write = LIMIT_1GB;
+    }
 
-    if (ret != LIMIT_1GB) {
+    ssize_t done = pwrite(fd, src, bytes_to_write, offset);
+    if (done < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
       return false;
     }
+    left -= done;
+    offset += done;
+    src += done;
   }
-  size_t remaining = nbyte - written_bytes;
-  if (remaining > 0) {
-    ssize_t ret = pwrite(fd, buf, remaining, offset + written_bytes);
 
-    return ret == remaining;
-  }
   return true;
 }
 
